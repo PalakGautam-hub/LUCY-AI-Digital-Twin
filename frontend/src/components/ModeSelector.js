@@ -2,9 +2,11 @@
 import { useLucy } from "@/context/LucyContext";
 
 const modes = [
-  { id: "companion", label: "Companion", icon: "💬" },
-  { id: "focus", label: "Focus", icon: "🎯" },
-  { id: "career", label: "Career", icon: "🚀" },
+  { id: "companion", label: "Companion", tag: "CMP" },
+  { id: "focus", label: "Focus", tag: "FCS" },
+  { id: "career", label: "Career", tag: "CAR" },
+  { id: "research", label: "Research", tag: "RSH" },
+  { id: "debug", label: "Debug", tag: "DBG" },
 ];
 
 export default function ModeSelector() {
@@ -27,7 +29,7 @@ export default function ModeSelector() {
           className={`mode-btn ${mode === m.id ? "active" : ""}`}
           onClick={() => handleModeChange(m.id)}
         >
-          {m.icon} {m.label}
+          <span className="mode-tag">{m.tag}</span> {m.label}
         </button>
       ))}
     </div>

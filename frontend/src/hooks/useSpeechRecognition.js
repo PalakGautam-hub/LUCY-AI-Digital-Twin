@@ -2,7 +2,7 @@
 import { useRef, useCallback, useEffect } from "react";
 import { useLucy } from "@/context/LucyContext";
 
-export default function useSpeechRecognition() {
+export default function useSpeechRecognition(continuous = false) {
   const { setVoiceState, addMessage } = useLucy();
   const recognitionRef = useRef(null);
   const isListeningRef = useRef(false);
@@ -13,11 +13,12 @@ export default function useSpeechRecognition() {
     if (!SpeechRecognition) return null;
 
     const recognition = new SpeechRecognition();
-    recognition.continuous = true;
+    recognition.continuous = continuous;
     recognition.interimResults = true;
     recognition.lang = "en-US";
+    recognition.maxAlternatives = 1;
     return recognition;
-  }, []);
+  }, [continuous]);
 
   const startListening = useCallback(() => {
     if (isListeningRef.current) return;
@@ -30,12 +31,9 @@ export default function useSpeechRecognition() {
     let finalTranscript = "";
 
     recognition.onresult = (event) => {
-      let interim = "";
       for (let i = event.resultIndex; i < event.results.length; i++) {
         if (event.results[i].isFinal) {
           finalTranscript += event.results[i][0].transcript;
-        } else {
-          interim += event.results[i][0].transcript;
         }
       }
     };

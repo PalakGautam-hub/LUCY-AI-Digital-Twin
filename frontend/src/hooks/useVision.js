@@ -8,14 +8,12 @@ export default function useVision() {
   const canvasRef = useRef(null);
   const intervalRef = useRef(null);
   const streamRef = useRef(null);
-  const lastFaceTime = useRef(Date.now());
   const consecutiveNoFace = useRef(0);
 
   const startVision = useCallback(async (videoEl) => {
-    if (!visionEnabled) return;
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { width: 320, height: 240, facingMode: "user" },
+        video: { width: { ideal: 320 }, height: { ideal: 240 } },
       });
       streamRef.current = stream;
       if (videoEl) {
@@ -24,7 +22,6 @@ export default function useVision() {
         videoRef.current = videoEl;
       }
 
-      // Simple motion/presence detection using canvas pixel analysis
       const canvas = document.createElement("canvas");
       canvas.width = 320;
       canvas.height = 240;
@@ -40,28 +37,22 @@ export default function useVision() {
         const pixels = imageData.data;
 
         if (prevPixels) {
-          // Calculate motion by comparing frames
           let motionScore = 0;
-          const centerStartX = 80;
-          const centerEndX = 240;
-          const centerStartY = 40;
-          const centerEndY = 200;
+          const csx = 80, cex = 240, csy = 40, cey = 200;
 
-          for (let y = centerStartY; y < centerEndY; y += 4) {
-            for (let x = centerStartX; x < centerEndX; x += 4) {
+          for (let y = csy; y < cey; y += 4) {
+            for (let x = csx; x < cex; x += 4) {
               const idx = (y * 320 + x) * 4;
               const diff = Math.abs(pixels[idx] - prevPixels[idx]) +
-                          Math.abs(pixels[idx + 1] - prevPixels[idx + 1]) +
-                          Math.abs(pixels[idx + 2] - prevPixels[idx + 2]);
+                Math.abs(pixels[idx + 1] - prevPixels[idx + 1]) +
+                Math.abs(pixels[idx + 2] - prevPixels[idx + 2]);
               if (diff > 40) motionScore++;
             }
           }
 
-          // Calculate brightness of center region (face-area proxy)
-          let brightness = 0;
-          let count = 0;
-          for (let y = centerStartY; y < centerEndY; y += 4) {
-            for (let x = centerStartX; x < centerEndX; x += 4) {
+          let brightness = 0, count = 0;
+          for (let y = csy; y < cey; y += 4) {
+            for (let x = csx; x < cex; x += 4) {
               const idx = (y * 320 + x) * 4;
               brightness += (pixels[idx] + pixels[idx + 1] + pixels[idx + 2]) / 3;
               count++;
@@ -69,16 +60,9 @@ export default function useVision() {
           }
           brightness /= count;
 
-          // Heuristic: high motion + reasonable brightness = present
           if (motionScore > 20 && brightness > 30) {
             consecutiveNoFace.current = 0;
-            lastFaceTime.current = Date.now();
-            // Moderate motion = focused, High motion = potentially distracted
-            if (motionScore > 200) {
-              setVisionStatus("distracted");
-            } else {
-              setVisionStatus("focused");
-            }
+            setVisionStatus(motionScore > 200 ? "distracted" : "focused");
           } else {
             consecutiveNoFace.current++;
             if (consecutiveNoFace.current > 10) {
@@ -89,7 +73,6 @@ export default function useVision() {
 
         prevPixels = new Uint8ClampedArray(pixels);
       }, 500);
-
     } catch (err) {
       console.warn("Vision not available:", err);
     }

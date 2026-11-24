@@ -3,16 +3,34 @@ import { createContext, useContext, useState, useCallback, useRef, useEffect } f
 
 const LucyContext = createContext(null);
 
+const DEFAULT_AVATAR = {
+  gender: "female",
+  bodyType: "athletic",
+  skinTone: "#c8a882",
+  hairStyle: "long",
+  hairColor: "#1a1a2e",
+  eyeColor: "#00d4ff",
+  outfitStyle: "tech",
+  holoColor: "#00d4ff",
+};
+
 export function LucyProvider({ children }) {
   // ── Core State ──
-  const [voiceState, setVoiceState] = useState("idle"); // idle | listening | thinking | speaking
+  const [voiceState, setVoiceState] = useState("idle");
   const [messages, setMessages] = useState([]);
-  const [mode, setMode] = useState("companion"); // focus | companion | career
+  const [mode, setMode] = useState("companion");
   const [personality, setPersonality] = useState(null);
   const [isOnboarded, setIsOnboarded] = useState(false);
+  const [userName, setUserName] = useState("");
+
+  // ── Avatar State ──
+  const [avatarConfig, setAvatarConfigState] = useState(DEFAULT_AVATAR);
+
+  // ── Emotion State ──
+  const [emotion, setEmotion] = useState("neutral");
 
   // ── Vision State ──
-  const [visionStatus, setVisionStatus] = useState("absent"); // focused | distracted | absent
+  const [visionStatus, setVisionStatus] = useState("absent");
   const [visionEnabled, setVisionEnabled] = useState(false);
 
   // ── Session State ──
@@ -24,15 +42,34 @@ export function LucyProvider({ children }) {
   const [nudge, setNudge] = useState(null);
   const lastActivityRef = useRef(Date.now());
 
-  // Check localStorage on mount
+  // Load from localStorage on mount
   useEffect(() => {
-    const saved = localStorage.getItem("lucy_personality");
-    if (saved) {
-      try {
-        setPersonality(JSON.parse(saved));
+    try {
+      const saved = localStorage.getItem("lucy_personality");
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        setPersonality(parsed);
         setIsOnboarded(true);
-      } catch { /* ignore */ }
-    }
+      }
+    } catch { /* ignore */ }
+
+    try {
+      const avatarSaved = localStorage.getItem("lucy_avatar");
+      if (avatarSaved) {
+        setAvatarConfigState({ ...DEFAULT_AVATAR, ...JSON.parse(avatarSaved) });
+      }
+    } catch { /* ignore */ }
+
+    try {
+      const nameSaved = localStorage.getItem("lucy_user_name");
+      if (nameSaved) setUserName(nameSaved);
+    } catch { /* ignore */ }
+
+    try {
+      if (localStorage.getItem("lucy_vision_enabled") === "true") {
+        setVisionEnabled(true);
+      }
+    } catch { /* ignore */ }
   }, []);
 
   // Session timer
@@ -55,20 +92,27 @@ export function LucyProvider({ children }) {
     clearInterval(sessionInterval.current);
   }, []);
 
-  // Add message
   const addMessage = useCallback((role, text) => {
     setMessages(prev => [...prev, { role, text, ts: Date.now() }]);
     lastActivityRef.current = Date.now();
   }, []);
 
-  // Save personality
   const savePersonality = useCallback((p) => {
     setPersonality(p);
     setIsOnboarded(true);
     localStorage.setItem("lucy_personality", JSON.stringify(p));
   }, []);
 
-  // Show nudge
+  const setAvatarConfig = useCallback((config) => {
+    setAvatarConfigState(config);
+    localStorage.setItem("lucy_avatar", JSON.stringify(config));
+  }, []);
+
+  const saveUserName = useCallback((name) => {
+    setUserName(name);
+    localStorage.setItem("lucy_user_name", name);
+  }, []);
+
   const showNudge = useCallback((text) => {
     setNudge(text);
     setTimeout(() => setNudge(null), 6000);
@@ -80,6 +124,9 @@ export function LucyProvider({ children }) {
     mode, setMode,
     personality, savePersonality,
     isOnboarded, setIsOnboarded,
+    userName, saveUserName,
+    avatarConfig, setAvatarConfig,
+    emotion, setEmotion,
     visionStatus, setVisionStatus,
     visionEnabled, setVisionEnabled,
     sessionStart, sessionDuration, startSession, stopSession,

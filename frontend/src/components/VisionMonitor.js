@@ -1,48 +1,48 @@
 "use client";
-import { useRef } from "react";
+import { useRef, useEffect } from "react";
 import { motion } from "framer-motion";
 import { useLucy } from "@/context/LucyContext";
 import useVision from "@/hooks/useVision";
 
-export default function VisionMonitor() {
+export default function VisionMonitor({ externalVideoRef }) {
   const { visionStatus, visionEnabled, setVisionEnabled } = useLucy();
   const { startVision, stopVision } = useVision();
-  const videoRef = useRef(null);
+  const localVideoRef = useRef(null);
+  const videoRef = externalVideoRef || localVideoRef;
 
-  const icons = {
-    focused: "👁",
-    distracted: "😵‍💫",
-    absent: "🚫",
-  };
-
-  const labels = {
-    focused: "Focused",
-    distracted: "Distracted",
-    absent: "Absent",
-  };
+  useEffect(() => {
+    if (visionEnabled && videoRef.current) {
+      startVision(videoRef.current);
+    }
+  }, [visionEnabled, startVision, videoRef]);
 
   async function toggleVision() {
     if (visionEnabled) {
       stopVision();
       setVisionEnabled(false);
+      localStorage.setItem("lucy_vision_enabled", "false");
     } else {
       setVisionEnabled(true);
-      // Small delay to let state update
-      setTimeout(() => {
-        if (videoRef.current) startVision(videoRef.current);
-      }, 100);
+      localStorage.setItem("lucy_vision_enabled", "true");
     }
   }
 
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
       <button
         className="btn-icon"
         onClick={toggleVision}
-        title={visionEnabled ? "Disable camera" : "Enable camera"}
-        style={{ width: 32, height: 32, fontSize: "0.8rem" }}
+        title={visionEnabled ? "Disable vision" : "Enable vision"}
+        style={{
+          width: 28, height: 28, fontSize: "0.65rem",
+          color: visionEnabled ? "var(--accent-cyan)" : "var(--text-muted)",
+          borderColor: visionEnabled ? "rgba(6, 255, 208, 0.2)" : undefined,
+        }}
       >
-        {visionEnabled ? "📷" : "📷"}
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+          <circle cx="12" cy="12" r="3"/>
+        </svg>
       </button>
       {visionEnabled && (
         <motion.div
@@ -50,16 +50,9 @@ export default function VisionMonitor() {
           initial={{ opacity: 0, x: -10 }}
           animate={{ opacity: 1, x: 0 }}
         >
-          {icons[visionStatus]} {labels[visionStatus]}
+          {visionStatus.toUpperCase()}
         </motion.div>
       )}
-      {/* Hidden video element for camera feed */}
-      <video
-        ref={videoRef}
-        style={{ display: "none" }}
-        playsInline
-        muted
-      />
     </div>
   );
 }
